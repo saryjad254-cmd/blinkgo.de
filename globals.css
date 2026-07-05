@@ -1,0 +1,133 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { ChefHat, Loader2 } from 'lucide-react';
+import { createBrowserClient } from '@/lib/supabase/client';
+
+export default function LoginPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const supabase = createBrowserClient();
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) throw signInError;
+      if (!data.user) throw new Error('لم يتم تسجيل الدخول');
+
+      // تحقق من الدور
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', data.user.id)
+        .single();
+
+      if (userError) throw userError;
+
+      if (userData?.role !== 'admin') {
+        await supabase.auth.signOut();
+        throw new Error('هذا الحساب ليس لديه صلاحيات الإدارة');
+      }
+
+      // توجيه المستخدم حسب الدور
+      const dest =
+        userData?.role === 'admin' ? '/dashboard' :
+        userData?.role === 'customer' ? '/restaurants' :
+        userData?.role === 'driver' ? '/driver/dashboard' :
+        '/dashboard';
+
+      router.push(dest);
+      router.refresh();
+    } catch (err: any) {
+      setError(err.message || 'فشل تسجيل الدخول');
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-orange-50 via-white to-orange-50">
+      <div className="max-w-md w-full">
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-block">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand text-white shadow-lg mb-4">
+              <ChefHat className="w-8 h-8" />
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900">BlinkGo</h1>
+          </Link>
+          <p className="text-gray-600 mt-2">تسجيل الدخول كمدير</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="card space-y-4">
+          {error && (
+            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label htmlFor="email" className="label">
+              البريد الإلكتروني
+            </label>
+            <input
+              id="email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="input"
+              placeholder="admin@blinkgo.com"
+              autoComplete="email"
+              dir="ltr"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="password" className="label">
+              كلمة المرور
+            </label>
+            <input
+              id="password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="input"
+              placeholder="••••••••"
+              autoComplete="current-password"
+              dir="ltr"
+            />
+          </div>
+
+          <button type="submit" disabled={loading} className="btn-primary w-full">
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                جارٍ الدخول...
+              </>
+            ) : (
+              'دخول'
+            )}
+          </button>
+
+          <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs text-blue-800">
+            <strong>حساب تجريبي:</strong> admin@blinkgo.com / DemoAdmin!2024
+          </div>
+        </form>
+      </div>
+    </main>
+  );
+}

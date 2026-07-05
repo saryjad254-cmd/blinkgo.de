@@ -1,0 +1,94 @@
+'use client';
+
+import { useState } from 'react';
+import { Plus, Minus, Check } from 'lucide-react';
+import { useCart } from '@/lib/cart-store';
+import type { Product, Restaurant } from '@/lib/types';
+
+interface Props {
+  product: Product;
+  restaurant: Restaurant;
+}
+
+export function AddToCartButton({ product, restaurant }: Props) {
+  const [qty, setQty] = useState(0);
+  const [added, setAdded] = useState(false);
+  const add = useCart((s) => s.add);
+  const setQuantity = useCart((s) => s.setQuantity);
+  const cartQty = useCart((s) =>
+    s.items.find((i) => i.product_id === product.id)?.quantity ?? 0
+  );
+
+  const currentQty = cartQty || qty;
+
+  function handleAdd() {
+    const newQty = currentQty + 1;
+    setQty(newQty);
+    add(
+      {
+        product_id: product.id,
+        product_name: product.name,
+        product_price: Number(product.discount_price ?? product.price),
+        image_url: product.image_urls?.[0] ?? null,
+        restaurant_id: restaurant.id,
+        restaurant_name: restaurant.name,
+      },
+      1
+    );
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1200);
+  }
+
+  function handleIncrement() {
+    setQuantity(product.id, currentQty + 1);
+    setQty(currentQty + 1);
+  }
+
+  function handleDecrement() {
+    const newQty = Math.max(0, currentQty - 1);
+    setQuantity(product.id, newQty);
+    setQty(newQty);
+  }
+
+  if (currentQty === 0) {
+    return (
+      <button
+        onClick={handleAdd}
+        disabled={!product.is_available}
+        className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-brand text-white text-sm font-bold hover:bg-brand-dark disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors min-w-[80px]"
+      >
+        {added ? (
+          <>
+            <Check className="w-4 h-4" />
+            <span>أُضيف</span>
+          </>
+        ) : (
+          <>
+            <Plus className="w-4 h-4" />
+            <span>أضف</span>
+          </>
+        )}
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1 bg-brand text-white rounded-lg overflow-hidden">
+      <button
+        onClick={handleDecrement}
+        className="p-2 hover:bg-brand-dark transition-colors"
+        aria-label="إنقاص"
+      >
+        <Minus className="w-4 h-4" />
+      </button>
+      <span className="font-bold px-2 min-w-[24px] text-center">{currentQty}</span>
+      <button
+        onClick={handleIncrement}
+        className="p-2 hover:bg-brand-dark transition-colors"
+        aria-label="زيادة"
+      >
+        <Plus className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
