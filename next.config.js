@@ -1,4 +1,6 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { ChefHat, ArrowLeft } from 'lucide-react';
 import { createServerClient } from '@/lib/supabase/server';
 
 export default async function HomePage() {
@@ -6,11 +8,9 @@ export default async function HomePage() {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    // غير مسجل — يعرض landing page
     return <Landing />;
   }
 
-  // مسجل — وجلب الدور لتوجيهه
   const { data: userData } = await supabase
     .from('users')
     .select('role')
@@ -30,9 +30,6 @@ export default async function HomePage() {
       redirect('/login');
   }
 }
-
-import Link from 'next/link';
-import { ChefHat, ArrowLeft } from 'lucide-react';
 
 function Landing() {
   return (
